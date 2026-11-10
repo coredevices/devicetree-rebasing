@@ -1,0 +1,32 @@
+name: Sync
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      UPSTREAM: https://git.kernel.org/pub/scm/linux/kernel/git/devicetree/devicetree-rebasing.git
+    steps:
+      - name: Fetch upstream
+        run: |
+          git init --bare repo.git
+          git -C repo.git fetch --no-tags "$UPSTREAM" \
+            '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*'
+
+      - name: Push to the mirror
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git -C repo.git push \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            '+refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
